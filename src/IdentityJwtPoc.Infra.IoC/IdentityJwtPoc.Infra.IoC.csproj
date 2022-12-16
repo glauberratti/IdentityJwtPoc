@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdentityJwtPoc.Application\IdentityJwtPoc.Application.csproj" />
+    <ProjectReference Include="..\IdentityJwtPoc.Domain\IdentityJwtPoc.Domain.csproj" />
+    <ProjectReference Include="..\IdentityJwtPoc.Infra.Data\IdentityJwtPoc.Infra.Data.csproj" />
+    <ProjectReference Include="..\IdentityJwtPoc.Infra.Identity\IdentityJwtPoc.Infra.Identity.csproj" />
+  </ItemGroup>
+
+</Project>
