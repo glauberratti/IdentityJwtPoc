@@ -10,7 +10,7 @@ namespace IdentityJwtPoc.API.Controllers
     {
         [HttpGet]
         [Route("sem-restricao")]
-        public async Task<IActionResult> Get()
+        public IActionResult Get()
         {
             return Ok();
         }
@@ -18,7 +18,7 @@ namespace IdentityJwtPoc.API.Controllers
         [HttpGet]
         [Route("com-authorize")]
         [Authorize]
-        public async Task<IActionResult> Get2()
+        public IActionResult Get2()
         {
             return Ok();
         }
@@ -26,7 +26,7 @@ namespace IdentityJwtPoc.API.Controllers
         [HttpGet]
         [Route("role-admin")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Get3()
+        public IActionResult Get3()
         {
             return Ok();
         }
@@ -34,7 +34,7 @@ namespace IdentityJwtPoc.API.Controllers
         [HttpGet]
         [Route("role-rh")]
         [Authorize(Roles = "RH")]
-        public async Task<ActionResult> Get4()
+        public IActionResult Get4()
         {
             return Ok();
         }
