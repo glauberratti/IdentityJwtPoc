@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\IdentityJwtPoc.Application\IdentityJwtPoc.Application.csproj" />
     <ProjectReference Include="..\IdentityJwtPoc.Domain\IdentityJwtPoc.Domain.csproj" />
+    <ProjectReference Include="..\IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography\IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography.csproj" />
   </ItemGroup>
 
 </Project>

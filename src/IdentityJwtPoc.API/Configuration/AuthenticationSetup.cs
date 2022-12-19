@@ -57,12 +57,13 @@ namespace IdentityJwtPoc.API.Configuration
             }).AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = tokenValidationParameters;
-                //options.Events = new JwtBearerEvents()
-                //{
-                //    //OnChallenge = async (context) => await CustomJwtMiddleware.CustomOnChallenge(context),
-                //    //OnMessageReceived = async (context) => await CustomJwtMiddleware.CustomOnMessageReceived(context),
-                //    OnTokenValidated = async(context) => await CustomJwtMiddleware.CustomOnTokenValidated(context),
-                //};
+                options.Events = new JwtBearerEvents()
+                {
+                    //OnChallenge = async (context) => await CustomJwtMiddleware.CustomOnChallenge(context),
+                    //OnMessageReceived = async (context) => await CustomJwtMiddleware.CustomOnMessageReceived(context),
+                    //OnTokenValidated = async (context) => await CustomJwtMiddleware.CustomOnTokenValidated(context),
+                    OnForbidden = async (context) => await CustomJwtMiddleware.CustomOnForbidden(context),
+                };
             });
 
             //services.AddAuthorization(auth =>

@@ -49,12 +49,15 @@ namespace IdentityJwtPoc.API.Controllers
 
         [HttpGet]
         [Route("refresh-token")]
-        public async Task<ActionResult> RefreshToken(string email)
+        public async Task<ActionResult> RefreshToken()
         {
             try
             {
-                var teste = HttpContext.User.Claims;
-                var result = await _identityService.RefreshToken(email);
+                var result = await _identityService.RefreshToken();
+
+                if (result.Errors.Count > 0)
+                    return Unauthorized();
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -65,11 +68,11 @@ namespace IdentityJwtPoc.API.Controllers
 
         [HttpGet]
         [Route("logout")]
-        public async Task<ActionResult> Logout()
+        public ActionResult Logout()
         {
             try
             {
-                await _identityService.Logout();
+                _identityService.Logout();
                 return Ok();
             }
             catch (Exception ex)
@@ -78,7 +81,22 @@ namespace IdentityJwtPoc.API.Controllers
             }
         }
 
-        [Authorize(Policy = "Admin")]
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        [Route("get-role")]
+        public async Task<ActionResult> getRoles(string email)
+        {
+            try
+            {
+                return Ok(await _identityService.GetUserRoles(email));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [Route("create-role")]
         public async Task<ActionResult> CreateRole(string role)
@@ -94,7 +112,7 @@ namespace IdentityJwtPoc.API.Controllers
             }
         }
 
-        [Authorize(Policy = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [Route("add-role")]
         public async Task<ActionResult> AddRoleToUser(string email, string role)
@@ -110,7 +128,7 @@ namespace IdentityJwtPoc.API.Controllers
             }
         }
 
-        [Authorize(Policy = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [Route("remove-role")]
         public async Task<ActionResult> RemoveRoleToUser(string email, string role)

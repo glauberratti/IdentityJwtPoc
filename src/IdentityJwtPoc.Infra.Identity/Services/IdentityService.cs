@@ -3,6 +3,7 @@ using IdentityJwtPoc.Application.DTOs.Responses;
 using IdentityJwtPoc.Application.Services.Interfaces;
 using IdentityJwtPoc.Domain.Entities;
 using IdentityJwtPoc.Domain.Repository;
+using IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography;
 using IdentityJwtPoc.Infra.Identity.Configurations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -90,12 +91,16 @@ namespace IdentityJwtPoc.Infra.Identity.Services
         public async Task<LoginResponse> Login(Login login)
         {
             var token = string.Empty;
+            var refreshToken = string.Empty;
             var result = await _signInManager.PasswordSignInAsync(login.Email, login.Password, false, true);
 
             if (result.Succeeded)
+            {
                 token = await CreateToken(login.Email);
+                refreshToken = await CreateRefreshToken(login.Email);
+            }
 
-            var loginResponse = new LoginResponse(token);
+            var loginResponse = new LoginResponse(token, refreshToken);
             if (!result.Succeeded)
             {
                 if (result.IsLockedOut)
@@ -111,11 +116,22 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             return loginResponse;
         }
 
-        public async Task<LoginResponse> RefreshToken(string email)
+        public async Task<LoginResponse> RefreshToken()
         {
-            var cookieRefreshToken = _cookieService.GetCookieValue("rt");
+            var cookieRefreshTokenFingerPrint = _cookieService.GetCookieValue("rt-fp") ?? "";
 
-            if (cookieRefreshToken == "")
+            if (cookieRefreshTokenFingerPrint == "")
+                return ResponseRefreshTokenError();
+
+            var claimRefreshTokenFingerPrint = _httpContextAccessor?.HttpContext?.User?.Claims?
+                .FirstOrDefault(c => c.Type == "fp")?.Value ?? "";
+
+            if (claimRefreshTokenFingerPrint == "")
+                return ResponseRefreshTokenError();
+
+            var decryptedClaimRefreshTokenFingerPrint = Cryptography.DecryptString(claimRefreshTokenFingerPrint);
+
+            if (decryptedClaimRefreshTokenFingerPrint != cookieRefreshTokenFingerPrint)
                 return ResponseRefreshTokenError();
 
             var userId = _httpContextAccessor?.HttpContext?.User?.Claims?
@@ -124,37 +140,41 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             if (userId == "")
                 return ResponseRefreshTokenError();
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 return ResponseRefreshTokenError();
 
-            var token = await CreateToken(email);
-            return new LoginResponse(token);
+            var token = await CreateToken(user.Email);
+            var refreshToken = await CreateRefreshToken(user.Email);
+            
+            return new LoginResponse(token, refreshToken);
         }
 
-        private static LoginResponse ResponseRefreshTokenError()
+        private LoginResponse ResponseRefreshTokenError()
         {
-            var response = new LoginResponse("");
+            Logout();
+            var response = new LoginResponse("", "");
             response.AddError("Sem permissão para realizar essa operação");
             return response;
         }
 
-        public async Task Logout()
+        public void Logout()
         {
             _cookieService.DeleteCookie("fp");
-            _cookieService.DeleteCookie("rt");
+            _cookieService.DeleteCookie("rt-fp");
         }
 
         private async Task<string> CreateToken(string email)
         {
             var fingerPrint = Guid.NewGuid().ToString();
+            var encryptedFingerPrint = Cryptography.EncryptString(fingerPrint);
             var identityUser = await _userManager.FindByEmailAsync(email);
             var user = await _userService.GetById(new Guid(identityUser.Id));
             var claims = await GetClaims(identityUser);
             var expirationTime = DateTime.Now.AddSeconds(_jwtOptions.AccessTokenExpiration);
 
             claims.Add(new Claim("LastChange", user!.LastChange.ToString()));
-            claims.Add(new Claim("fp", fingerPrint));
+            claims.Add(new Claim("fp", encryptedFingerPrint));
 
             var jwt = new JwtSecurityToken(
                 issuer: _jwtOptions.Issuer,
@@ -166,10 +186,39 @@ namespace IdentityJwtPoc.Infra.Identity.Services
 
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-            _cookieService.CreateCookie("rt", Guid.NewGuid().ToString(), _jwtOptions.RefreshTokenExpiration);
             _cookieService.CreateCookie("fp", fingerPrint, _jwtOptions.AccessTokenExpiration);
 
             return token;
+        }
+
+        private async Task<string> CreateRefreshToken(string email)
+        {
+            var refreshTokenFingerPrint = Guid.NewGuid().ToString();
+            var encryptedFingerPrint = Cryptography.EncryptString(refreshTokenFingerPrint);
+            var identityUser = await _userManager.FindByEmailAsync(email);
+            var expirationTime = DateTime.Now.AddSeconds(_jwtOptions.RefreshTokenExpiration);
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, identityUser.Id),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Nbf, DateTime.Now.ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, DateTime.Now.ToString()),
+                new Claim("fp", encryptedFingerPrint),
+            };
+
+            var jwt = new JwtSecurityToken(
+                issuer: _jwtOptions.Issuer,
+                audience: _jwtOptions.Audience,
+                claims: claims,
+                notBefore: DateTime.Now,
+                expires: expirationTime,
+                signingCredentials: _jwtOptions.SigningCredentials);
+
+            var refreshToken = new JwtSecurityTokenHandler().WriteToken(jwt);
+
+            _cookieService.CreateCookie("rt-fp", refreshTokenFingerPrint, _jwtOptions.RefreshTokenExpiration);
+
+            return refreshToken;
         }
 
         private async Task<IList<Claim>> GetClaims(IdentityUser user)
@@ -197,6 +246,17 @@ namespace IdentityJwtPoc.Infra.Identity.Services
                 await _roleManager.CreateAsync(new IdentityRole(role));
 
             return true;
+        }
+
+        public async Task<IEnumerable<string>> GetUserRoles(string email)
+        {
+            var identityUser = await _userManager.FindByEmailAsync(email);
+            var user = await _userService.GetById(new Guid(identityUser.Id));
+
+            if (identityUser is null || user is null)
+                return null;
+
+            return await _userManager.GetRolesAsync(identityUser);
         }
 
         public async Task<bool> AddRoleToUser(string email, string role)

@@ -1,4 +1,5 @@
 ﻿using IdentityJwtPoc.Application.Services.Interfaces;
+using IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Security.Claims;
 
@@ -13,17 +14,12 @@ namespace IdentityJwtPoc.API.Middlewares
             app.Use(async (HttpContext context, Func<Task> next) =>
             {
                 await next();
-                await Check(context, context.RequestServices, context.User);
-                //if (replacementUser != null)
-                //    context.User = replacementUser;
-
+                await Check(context);
             });
         }
 
         public static async Task Check(
-            HttpContext context,
-            IServiceProvider serviceProvider,
-            ClaimsPrincipal user)
+            HttpContext context)
         {
             PathString pathLogin = new("/api/Auth/login");
             PathString pathRefreshToken = new("/api/Auth/refresh-token");
@@ -31,29 +27,29 @@ namespace IdentityJwtPoc.API.Middlewares
             if (context.Request.Path.Equals(pathLogin, StringComparison.OrdinalIgnoreCase) ||
                 context.Request.Path.Equals(pathRefreshToken, StringComparison.OrdinalIgnoreCase)) return;
 
-            if (!user.Identity.IsAuthenticated) return;
+            var user = context.User;
+            if (!user.Identity!.IsAuthenticated) return;
             
             var userId = user.Claims.SingleOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
             if (userId != null)
             {
-                //There is a logged-in user, so we see if the FileStore cache contains a new Permissions claim
-                //var fsCache = serviceProvider.GetRequiredService<IDistributedFileStoreCacheClass>();
+                var serviceProvider = context.RequestServices;
                 var cookieService = serviceProvider.GetRequiredService<ICookieService>();
+                var identityService = serviceProvider.GetRequiredService<IIdentityService>();
                 var fingerPrintClaim = user.Claims.SingleOrDefault(c => c.Type == "fp");
                 var strFingerPrintClaim = fingerPrintClaim?.Value ?? "";
+                var decryptedStrFingerPrintClaim = Cryptography.DecryptString(strFingerPrintClaim);
 
-                if (!cookieService.IsJwtFingerPrintValid(strFingerPrintClaim))
+                if (!cookieService.IsJwtFingerPrintValid(decryptedStrFingerPrintClaim))
                 {
-                    //context.Response.Clear();
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    Invalidate(context, identityService);
                     return;
                 }
 
                 var lastChangeClaim = user.Claims.SingleOrDefault(c => c.Type == "LastChange");
                 if (lastChangeClaim == null)
                 {
-                    //context.Response.Clear();
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    Invalidate(context, identityService);
                     return;
                 }
 
@@ -64,33 +60,23 @@ namespace IdentityJwtPoc.API.Middlewares
 
                 if (userDb.HasChange(lastChangeClaim.Value))
                 {
-                    //context.Response.Clear();
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    Invalidate(context, identityService);
                     return;
                 }
-
-                //var usersEmail = await fsCache.GetAsync(userId.FormAddedEmailClaimKey());
-                //if (usersEmail == null)
-                //{
-                //    //Not set up yet, so we need to get the user's email and place it in the cache
-                //    var context = serviceProvider.GetRequiredService<AuthPermissionsDbContext>();
-                //    usersEmail = context.AuthUsers.Where(x => x.UserId == userId).Select(x => x.Email).FirstOrDefault();
-
-                //    if (usersEmail == null)
-                //        return null; //shouldn't happen, but could in certain updates
-
-                //    await fsCache.SetAsync(userId.FormAddedEmailClaimKey(), usersEmail);
-                //}
-
-                ////We need to add the Email from the cache
-                //var updateClaims = user.Claims.ToList();
-                //updateClaims.Add(new Claim(ClaimTypes.Email, usersEmail));
-
-                //var appIdentity = new ClaimsIdentity(updateClaims, user.Identity!.AuthenticationType);
-                ////return new ClaimsPrincipal(appIdentity);
             }
 
-            return; //no change to the current user
+            return;
+        }
+
+        public static async Task CustomOnForbidden(ForbiddenContext context)
+        {
+            await Check(context.HttpContext);
+        }
+
+        private static void Invalidate(HttpContext context, IIdentityService identityService)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            identityService.Logout();
         }
 
         //public static async Task CustomOnChallenge(JwtBearerChallengeContext context)
