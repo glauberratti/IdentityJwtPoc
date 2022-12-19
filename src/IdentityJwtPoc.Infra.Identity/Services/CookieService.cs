@@ -1,7 +1,6 @@
 ﻿using IdentityJwtPoc.Application.Services.Interfaces;
 using IdentityJwtPoc.Domain;
 using Microsoft.AspNetCore.Http;
-using System.Net;
 
 namespace IdentityJwtPoc.Infra.Identity.Services
 {
