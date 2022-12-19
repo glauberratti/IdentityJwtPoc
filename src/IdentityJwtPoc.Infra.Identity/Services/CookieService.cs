@@ -1,4 +1,5 @@
 ﻿using IdentityJwtPoc.Application.Services.Interfaces;
+using IdentityJwtPoc.Domain;
 using Microsoft.AspNetCore.Http;
 using System.Net;
 
@@ -15,7 +16,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
 
         public bool IsJwtFingerPrintValid(string claimFingerPrint)
         {
-            var ok = _httpContextAccessor!.HttpContext!.Request.Cookies.TryGetValue("fp", out var fingerPrint);
+            var ok = _httpContextAccessor!.HttpContext!.Request.Cookies.TryGetValue(Claims.FB, out var fingerPrint);
 
             if (!ok) return false;
 

@@ -83,8 +83,8 @@ namespace IdentityJwtPoc.API.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet]
-        [Route("get-role")]
-        public async Task<ActionResult> getRoles(string email)
+        [Route("get-user-roles")]
+        public async Task<ActionResult> getUserRoles(string email)
         {
             try
             {

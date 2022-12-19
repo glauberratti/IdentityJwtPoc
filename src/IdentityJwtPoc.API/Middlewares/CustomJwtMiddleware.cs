@@ -1,4 +1,5 @@
 ﻿using IdentityJwtPoc.Application.Services.Interfaces;
+using IdentityJwtPoc.Domain;
 using IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Security.Claims;
@@ -7,8 +8,6 @@ namespace IdentityJwtPoc.API.Middlewares
 {
     public static class CustomJwtMiddleware
     {
-        public static string FormAddedEmailClaimKey(this string userId) => $"AddEmailClaim-{userId}";
-
         public static void UseCustomJwtMiddleware(this IApplicationBuilder app)
         {
             app.Use(async (HttpContext context, Func<Task> next) =>
@@ -31,38 +30,38 @@ namespace IdentityJwtPoc.API.Middlewares
             if (!user.Identity!.IsAuthenticated) return;
             
             var userId = user.Claims.SingleOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if (userId != null)
+            if (userId == null)
+                return;
+
+            var serviceProvider = context.RequestServices;
+            var cookieService = serviceProvider.GetRequiredService<ICookieService>();
+            var identityService = serviceProvider.GetRequiredService<IIdentityService>();
+            var fingerPrintClaim = user.Claims.SingleOrDefault(c => c.Type == Claims.FB);
+            var strFingerPrintClaim = fingerPrintClaim?.Value ?? "";
+            var decryptedStrFingerPrintClaim = Cryptography.DecryptString(strFingerPrintClaim);
+
+            if (!cookieService.IsJwtFingerPrintValid(decryptedStrFingerPrintClaim))
             {
-                var serviceProvider = context.RequestServices;
-                var cookieService = serviceProvider.GetRequiredService<ICookieService>();
-                var identityService = serviceProvider.GetRequiredService<IIdentityService>();
-                var fingerPrintClaim = user.Claims.SingleOrDefault(c => c.Type == "fp");
-                var strFingerPrintClaim = fingerPrintClaim?.Value ?? "";
-                var decryptedStrFingerPrintClaim = Cryptography.DecryptString(strFingerPrintClaim);
+                Invalidate(context, identityService);
+                return;
+            }
 
-                if (!cookieService.IsJwtFingerPrintValid(decryptedStrFingerPrintClaim))
-                {
-                    Invalidate(context, identityService);
-                    return;
-                }
+            var lastChangeClaim = user.Claims.SingleOrDefault(c => c.Type == "LastChange");
+            if (lastChangeClaim == null)
+            {
+                Invalidate(context, identityService);
+                return;
+            }
 
-                var lastChangeClaim = user.Claims.SingleOrDefault(c => c.Type == "LastChange");
-                if (lastChangeClaim == null)
-                {
-                    Invalidate(context, identityService);
-                    return;
-                }
+            var userService = serviceProvider.GetRequiredService<IUserService>();
+            var userDb = await userService.GetById(new Guid(userId.Value));
 
-                var userService = serviceProvider.GetRequiredService<IUserService>();
-                var userDb = await userService.GetById(new Guid(userId.Value));
+            if (userDb == null) return;
 
-                if (userDb == null) return;
-
-                if (userDb.HasChange(lastChangeClaim.Value))
-                {
-                    Invalidate(context, identityService);
-                    return;
-                }
+            if (userDb.HasChange(lastChangeClaim.Value))
+            {
+                Invalidate(context, identityService);
+                return;
             }
 
             return;

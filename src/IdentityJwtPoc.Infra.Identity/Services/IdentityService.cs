@@ -1,6 +1,7 @@
 ﻿using IdentityJwtPoc.Application.DTOs;
 using IdentityJwtPoc.Application.DTOs.Responses;
 using IdentityJwtPoc.Application.Services.Interfaces;
+using IdentityJwtPoc.Domain;
 using IdentityJwtPoc.Domain.Entities;
 using IdentityJwtPoc.Domain.Repository;
 using IdentityJwtPoc.Infra.Data.CrossCutting.Cryptography;
@@ -118,13 +119,13 @@ namespace IdentityJwtPoc.Infra.Identity.Services
 
         public async Task<LoginResponse> RefreshToken()
         {
-            var cookieRefreshTokenFingerPrint = _cookieService.GetCookieValue("rt-fp") ?? "";
+            var cookieRefreshTokenFingerPrint = _cookieService.GetCookieValue(Claims.RTFB) ?? "";
 
             if (cookieRefreshTokenFingerPrint == "")
                 return ResponseRefreshTokenError();
 
             var claimRefreshTokenFingerPrint = _httpContextAccessor?.HttpContext?.User?.Claims?
-                .FirstOrDefault(c => c.Type == "fp")?.Value ?? "";
+                .FirstOrDefault(c => c.Type == Claims.FB)?.Value ?? "";
 
             if (claimRefreshTokenFingerPrint == "")
                 return ResponseRefreshTokenError();
@@ -160,8 +161,8 @@ namespace IdentityJwtPoc.Infra.Identity.Services
 
         public void Logout()
         {
-            _cookieService.DeleteCookie("fp");
-            _cookieService.DeleteCookie("rt-fp");
+            _cookieService.DeleteCookie(Claims.FB);
+            _cookieService.DeleteCookie(Claims.RTFB);
         }
 
         private async Task<string> CreateToken(string email)
@@ -173,8 +174,8 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             var claims = await GetClaims(identityUser);
             var expirationTime = DateTime.Now.AddSeconds(_jwtOptions.AccessTokenExpiration);
 
-            claims.Add(new Claim("LastChange", user!.LastChange.ToString()));
-            claims.Add(new Claim("fp", encryptedFingerPrint));
+            claims.Add(new Claim(Claims.LAST_CHANGE, user!.LastChange.ToString()));
+            claims.Add(new Claim(Claims.FB, encryptedFingerPrint));
 
             var jwt = new JwtSecurityToken(
                 issuer: _jwtOptions.Issuer,
@@ -182,11 +183,12 @@ namespace IdentityJwtPoc.Infra.Identity.Services
                 claims: claims,
                 notBefore: DateTime.Now,
                 expires: expirationTime,
-                signingCredentials: _jwtOptions.SigningCredentials);
+                signingCredentials: _jwtOptions.SigningCredentials
+                );
 
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-            _cookieService.CreateCookie("fp", fingerPrint, _jwtOptions.AccessTokenExpiration);
+            _cookieService.CreateCookie(Claims.FB, fingerPrint, _jwtOptions.AccessTokenExpiration);
 
             return token;
         }
@@ -203,7 +205,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Nbf, DateTime.Now.ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTime.Now.ToString()),
-                new Claim("fp", encryptedFingerPrint),
+                new Claim(Claims.FB, encryptedFingerPrint),
             };
 
             var jwt = new JwtSecurityToken(
@@ -212,11 +214,12 @@ namespace IdentityJwtPoc.Infra.Identity.Services
                 claims: claims,
                 notBefore: DateTime.Now,
                 expires: expirationTime,
-                signingCredentials: _jwtOptions.SigningCredentials);
+                signingCredentials: _jwtOptions.SigningCredentials
+                );
 
             var refreshToken = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-            _cookieService.CreateCookie("rt-fp", refreshTokenFingerPrint, _jwtOptions.RefreshTokenExpiration);
+            _cookieService.CreateCookie(Claims.RTFB, refreshTokenFingerPrint, _jwtOptions.RefreshTokenExpiration);
 
             return refreshToken;
         }
@@ -254,7 +257,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             var user = await _userService.GetById(new Guid(identityUser.Id));
 
             if (identityUser is null || user is null)
-                return null;
+                return new List<string>();
 
             return await _userManager.GetRolesAsync(identityUser);
         }

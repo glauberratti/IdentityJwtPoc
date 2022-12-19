@@ -65,18 +65,6 @@ namespace IdentityJwtPoc.API.Configuration
                     OnForbidden = async (context) => await CustomJwtMiddleware.CustomOnForbidden(context),
                 };
             });
-
-            //services.AddAuthorization(auth =>
-            //{
-            //    auth.FallbackPolicy = new AuthorizationPolicyBuilder()
-            //        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-            //        .RequireAuthenticatedUser()
-            //        .Build();
-
-            //    auth.AddPolicy("Bearer", new AuthorizationPolicyBuilder()
-            //        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-            //        .RequireAuthenticatedUser().Build());
-            //});
         }
     }
 }
