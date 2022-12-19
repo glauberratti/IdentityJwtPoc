@@ -6,7 +6,8 @@ namespace IdentityJwtPoc.API.Configuration
     {
         public static IServiceCollection AddSwaggerConfiguration(this IServiceCollection services)
         {
-            services.AddSwaggerGen(options => {
+            services.AddSwaggerGen(options =>
+            {
                 options.SwaggerDoc(
                     "v1",
                     new OpenApiInfo

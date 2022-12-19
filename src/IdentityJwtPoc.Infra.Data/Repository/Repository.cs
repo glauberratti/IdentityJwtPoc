@@ -1,5 +1,4 @@
 ﻿using IdentityJwtPoc.Domain.Repository;
-using IdentityJwtPoc.Infra.Data.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace IdentityJwtPoc.Infra.Data.Repository

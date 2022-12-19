@@ -147,7 +147,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
 
             var token = await CreateToken(user.Email);
             var refreshToken = await CreateRefreshToken(user.Email);
-            
+
             return new LoginResponse(token, refreshToken);
         }
 

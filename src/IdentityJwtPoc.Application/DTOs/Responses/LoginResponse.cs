@@ -8,7 +8,7 @@ namespace IdentityJwtPoc.Application.DTOs.Responses
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string AccessToken { get; private set; }
-        
+
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string RefreshToken { get; private set; }
 

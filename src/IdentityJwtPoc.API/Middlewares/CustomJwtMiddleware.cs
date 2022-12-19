@@ -22,13 +22,13 @@ namespace IdentityJwtPoc.API.Middlewares
         {
             PathString pathLogin = new("/api/Auth/login");
             PathString pathRefreshToken = new("/api/Auth/refresh-token");
-            
+
             if (context.Request.Path.Equals(pathLogin, StringComparison.OrdinalIgnoreCase) ||
                 context.Request.Path.Equals(pathRefreshToken, StringComparison.OrdinalIgnoreCase)) return;
 
             var user = context.User;
             if (!user.Identity!.IsAuthenticated) return;
-            
+
             var userId = user.Claims.SingleOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
             if (userId == null)
                 return;

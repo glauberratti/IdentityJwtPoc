@@ -10,7 +10,7 @@ namespace IdentityJwtPoc.API.Controllers
     {
         [HttpGet]
         [Route("sem-restricao")]
-        public async Task<IActionResult> Get() 
+        public async Task<IActionResult> Get()
         {
             return Ok();
         }

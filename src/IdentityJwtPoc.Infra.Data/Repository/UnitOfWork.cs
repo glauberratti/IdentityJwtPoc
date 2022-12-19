@@ -1,5 +1,4 @@
 ﻿using IdentityJwtPoc.Domain.Repository;
-using IdentityJwtPoc.Infra.Data.Data;
 
 namespace IdentityJwtPoc.Infra.Data.Repository
 {
