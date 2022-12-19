@@ -46,7 +46,7 @@ namespace IdentityJwtPoc.API.Middlewares
                 return;
             }
 
-            var lastChangeClaim = user.Claims.SingleOrDefault(c => c.Type == "LastChange");
+            var lastChangeClaim = user.Claims.SingleOrDefault(c => c.Type == Claims.LAST_CHANGE);
             if (lastChangeClaim == null)
             {
                 Invalidate(context, identityService);
