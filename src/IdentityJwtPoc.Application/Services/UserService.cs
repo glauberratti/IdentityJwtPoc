@@ -26,41 +26,59 @@ namespace IdentityJwtPoc.Application.Services
             return await _userRepository.GetAllAsync();
         }
 
-        public async Task Add(User user)
+        public async Task Add(User user, bool userTransaction = true)
         {
-            //user.Id = Guid.NewGuid();
-            //_uow.BeginTransaction();
-            await _userRepository.AddAsync(user);
-            //var ok = _uow.Commit();
+            if (user.Id == Guid.Empty)
+                user.Id = Guid.NewGuid();
 
-            //if (!ok)
-            //{
-            //    throw new Exception("Ocorreu algum erro no BD");
-            //}
+            if (userTransaction)
+             _uow.BeginTransaction();
+            
+            await _userRepository.AddAsync(user);
+            
+            if (userTransaction)
+            {
+                var ok = _uow.Commit();
+                if (!ok)
+                {
+                    throw new Exception("Ocorreu algum erro no BD");
+                }
+            }
         }
 
-        public async Task Update(User user)
+        public async Task Update(User user, bool userTransaction = true)
         {
             user.LastChange = DateTime.Now;
-            //_uow.BeginTransaction();
-            await _userRepository.UpdateAsync(user);
-            //var ok = _uow.Commit();
 
-            //if (!ok)
-            //{
-            //    throw new Exception("Ocorreu algum erro no BD");
-            //}
+            if (userTransaction)
+                _uow.BeginTransaction();
+
+            await _userRepository.UpdateAsync(user);
+
+            if (userTransaction)
+            {
+                var ok = _uow.Commit();
+                if (!ok)
+                {
+                    throw new Exception("Ocorreu algum erro no BD");
+                }
+            }
         }
 
-        public async Task Delete(Guid id)
+        public async Task Delete(Guid id, bool userTransaction = true)
         {
-            _uow.BeginTransaction();
-            await _userRepository.DeleteAsync(id);
-            var ok = _uow.Commit();
+            if (userTransaction)
+                _uow.BeginTransaction();
 
-            if (!ok)
+            await _userRepository.DeleteAsync(id);
+
+            if (userTransaction)
             {
-                throw new Exception("Ocorreu algum erro no BD");
+                var ok = _uow.Commit();
+                if (!ok)
+                {
+                    throw new Exception("Ocorreu algum erro no BD");
+                }
             }
         }
     }

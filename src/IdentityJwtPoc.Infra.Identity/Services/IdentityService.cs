@@ -71,7 +71,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
                     LastChange = DateTime.Now,
                 };
                 _uow.BeginTransaction();
-                await _userService.Add(user);
+                await _userService.Add(user, false);
                 var commitOk = _uow.Commit();
 
                 if (!commitOk)
@@ -277,14 +277,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             if (result.Succeeded)
             {
                 user.LastChange = DateTime.Now;
-                _uow.BeginTransaction();
                 await _userService.Update(user);
-                var ok = _uow.Commit();
-
-                if (!ok)
-                {
-                    throw new Exception("Ocorreu algum erro no BD");
-                }
             }
 
             return true;
@@ -308,14 +301,7 @@ namespace IdentityJwtPoc.Infra.Identity.Services
             if (result.Succeeded)
             {
                 user.LastChange = DateTime.Now;
-                _uow.BeginTransaction();
                 await _userService.Update(user);
-                var ok = _uow.Commit();
-
-                if (!ok)
-                {
-                    throw new Exception("Ocorreu algum erro no BD");
-                }
             }
 
             return true;
